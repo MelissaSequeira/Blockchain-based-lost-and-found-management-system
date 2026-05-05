@@ -8,13 +8,17 @@ contract LostFoundAdvanced {
         string name;
         string category;
         string location;
-        string proofHash;
+
         uint reward;
+
         address payable owner;
         address payable finder;
+
         bool found;
+        bool ownerVerified;   // ✅ NEW (form verification result)
         bool approved;
         bool claimed;
+
         uint createdAt;
     }
 
@@ -22,27 +26,12 @@ contract LostFoundAdvanced {
 
     mapping(uint => Item) public items;
 
-    event LostReported(
-        uint id,
-        string name,
-        uint reward,
-        address owner
-    );
-
-    event FoundReported(
-        uint id,
-        address finder
-    );
-
-    event RewardApproved(
-        uint id
-    );
-
-    event RewardClaimed(
-        uint id,
-        address finder,
-        uint amount
-    );
+    // EVENTS
+    event LostReported(uint id, string name, uint reward, address owner);
+    event FoundReported(uint id, address finder);
+    event OwnerVerified(uint id); // ✅ NEW
+    event RewardApproved(uint id);
+    event RewardClaimed(uint id, address finder, uint amount);
 
     // -----------------------------------
     // REPORT LOST ITEM
@@ -50,8 +39,7 @@ contract LostFoundAdvanced {
     function reportLost(
         string memory _name,
         string memory _category,
-        string memory _location,
-        string memory _proofHash
+        string memory _location
     ) public payable {
 
         require(msg.value > 0, "Reward required");
@@ -63,81 +51,62 @@ contract LostFoundAdvanced {
             _name,
             _category,
             _location,
-            _proofHash,
             msg.value,
             payable(msg.sender),
             payable(address(0)),
             false,
+            false, // ownerVerified
             false,
             false,
             block.timestamp
         );
 
-        emit LostReported(
-            itemCount,
-            _name,
-            msg.value,
-            msg.sender
-        );
+        emit LostReported(itemCount, _name, msg.value, msg.sender);
     }
 
     // -----------------------------------
     // REPORT FOUND
     // -----------------------------------
-    function reportFound(
-        uint _id
-    ) public {
+    function reportFound(uint _id) public {
 
-        require(
-            _id > 0 &&
-            _id <= itemCount,
-            "Invalid ID"
-        );
+        require(_id > 0 && _id <= itemCount, "Invalid ID");
 
-        Item storage item =
-            items[_id];
+        Item storage item = items[_id];
 
-        require(
-            item.claimed == false,
-            "Already claimed"
-        );
+        require(!item.claimed, "Already claimed");
 
-        item.finder =
-            payable(msg.sender);
-
+        item.finder = payable(msg.sender);
         item.found = true;
 
-        emit FoundReported(
-            _id,
-            msg.sender
-        );
+        emit FoundReported(_id, msg.sender);
+    }
+
+    // -----------------------------------
+    // FINDER VERIFIES OWNER (FORM RESULT)
+    // -----------------------------------
+    function verifyOwner(uint _id) public {
+
+        Item storage item = items[_id];
+
+        require(msg.sender == item.finder, "Only finder can verify");
+        require(item.found == true, "Item not marked found");
+
+        item.ownerVerified = true;
+
+        emit OwnerVerified(_id);
     }
 
     // -----------------------------------
     // OWNER APPROVES REWARD
     // -----------------------------------
-    function approveReward(
-        uint _id
-    ) public {
+    function approveReward(uint _id) public {
 
-        Item storage item =
-            items[_id];
+        Item storage item = items[_id];
 
-        require(
-            msg.sender ==
-            item.owner,
-            "Only owner"
-        );
-
-        require(
-            item.found == true,
-            "Not found yet"
-        );
-
-        require(
-            item.claimed == false,
-            "Already claimed"
-        );
+        require(msg.sender == item.owner, "Only owner");
+        require(item.found == true, "Not found yet");
+        require(item.ownerVerified == true, "Owner not verified"); // ✅ NEW
+        require(!item.claimed, "Already claimed");
 
         item.approved = true;
 
@@ -145,66 +114,30 @@ contract LostFoundAdvanced {
     }
 
     // -----------------------------------
-    // FINDER CLAIMS AFTER APPROVAL
+    // FINDER CLAIMS REWARD
     // -----------------------------------
-    function claimReward(
-        uint _id,
-        string memory enteredHash
-    ) public {
+    function claimReward(uint _id) public {
 
-        Item storage item =
-            items[_id];
+        Item storage item = items[_id];
 
-        require(
-            msg.sender ==
-            item.finder,
-            "Only finder"
-        );
+        require(msg.sender == item.finder, "Only finder");
+        require(item.approved == true, "Not approved");
+        require(item.ownerVerified == true, "Not verified"); // ✅ EXTRA SAFETY
+        require(!item.claimed, "Already claimed");
 
-        require(
-            item.approved == true,
-            "Owner not approved"
-        );
-
-        require(
-            item.claimed == false,
-            "Already claimed"
-        );
-
-        require(
-            keccak256(
-                abi.encodePacked(
-                    item.proofHash
-                )
-            ) ==
-            keccak256(
-                abi.encodePacked(
-                    enteredHash
-                )
-            ),
-            "Wrong proof"
-        );
-
-        uint amount =
-            item.reward;
+        uint amount = item.reward;
 
         item.claimed = true;
 
         item.finder.transfer(amount);
 
-        emit RewardClaimed(
-            _id,
-            msg.sender,
-            amount
-        );
+        emit RewardClaimed(_id, msg.sender, amount);
     }
 
     // -----------------------------------
     // VIEW ITEM
     // -----------------------------------
-    function getItem(
-        uint _id
-    )
+    function getItem(uint _id)
     public
     view
     returns(
@@ -218,11 +151,11 @@ contract LostFoundAdvanced {
         bool,
         bool,
         bool,
+        bool,
         uint
     )
     {
-        Item memory item =
-            items[_id];
+        Item memory item = items[_id];
 
         return(
             item.id,
@@ -233,12 +166,16 @@ contract LostFoundAdvanced {
             item.owner,
             item.finder,
             item.found,
+            item.ownerVerified, // ✅ NEW
             item.approved,
             item.claimed,
             item.createdAt
         );
     }
 
+    // -----------------------------------
+    // CONTRACT BALANCE
+    // -----------------------------------
     function getContractBalance()
     public
     view

@@ -1,194 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Lost & Found DApp</title>
 
-<title>Blockchain Lost & Found</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
-
-<style>
-body{
-    background:#f5f7fb;
-}
-
-.card{
-    border:none;
-    border-radius:15px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.08);
-}
-
-.table th{
-    background:#0d6efd;
-    color:white;
-}
-
-.badge-big{
-    font-size:14px;
-    padding:8px 12px;
-}
-</style>
-
+    <style>
+        body { background: #f5f7fa; }
+        .card { border-radius: 12px; }
+        .badge { font-size: 0.8rem; }
+    </style>
 </head>
-<body>
 
-<div class="container py-4">
+<body class="container py-4">
 
-    <h1 class="text-center mb-4">
-        Blockchain Lost & Found System
-    </h1>
+    <h2 class="mb-3">🔗 Lost & Found (Blockchain)</h2>
 
-    <!-- WALLET CARD -->
-    <div class="card p-4 mb-4">
-        <div class="row">
-            <div class="col-md-8">
-                <h5 id="wallet">Not Connected</h5>
-                <p class="mb-0" id="balance">Balance: 0 ETH</p>
-                <p class="mb-0" id="contractBal">Contract: 0 ETH</p>
-            </div>
+    <!-- WALLET -->
+    <button class="btn btn-dark mb-3" onclick="connectWallet()">Connect Wallet</button>
+    <p id="wallet"></p>
+    <p id="balance"></p>
+    <p id="contractBal"></p>
 
-            <div class="col-md-4 text-end">
-                <button class="btn btn-primary"
-                onclick="connectWallet()">
-                    Connect MetaMask
-                </button>
+    <div class="row">
+
+        <!-- REPORT LOST -->
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h5>Report Lost Item</h5>
+
+                <input id="itemName" class="form-control mb-2" placeholder="Item Name">
+                <input id="location" class="form-control mb-2" placeholder="Lost Location">
+                <input id="reward" class="form-control mb-2" placeholder="Reward (ETH)">
+                <input id="ownerEmail" class="form-control mb-2" placeholder="Owner Email">
+
+                <button class="btn btn-primary" onclick="reportLost()">Submit</button>
             </div>
         </div>
-    </div>
 
-    <!-- REPORT LOST -->
-    <div class="card p-4 mb-4">
-        <h4 class="mb-3">Report Lost Item</h4>
+        <!-- REPORT FOUND -->
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h5>Report Found</h5>
 
-        <div class="row g-3">
+                <input id="foundId" class="form-control mb-2" placeholder="Item ID">
+                <input id="finderEmail" class="form-control mb-2" placeholder="Finder Email">
 
-            <div class="col-md-6">
-                <input class="form-control"
-                id="itemName"
-                placeholder="Item Name">
+                <button class="btn btn-success" onclick="reportFound()">Mark Found</button>
             </div>
-
-            <div class="col-md-6">
-                <input class="form-control"
-                id="category"
-                placeholder="Category">
-            </div>
-
-            <div class="col-md-6">
-                <input class="form-control"
-                id="location"
-                placeholder="Lost Location">
-            </div>
-
-            <div class="col-md-6">
-                <input class="form-control"
-                id="proofHash"
-                placeholder="Secret Proof">
-            </div>
-
-            <div class="col-md-6">
-                <input class="form-control"
-                id="reward"
-                placeholder="Reward ETH">
-            </div>
-
-            <div class="col-md-6">
-                <button class="btn btn-success w-100"
-                onclick="reportLost()">
-                    Submit Lost Item
-                </button>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ACTIONS -->
-    <div class="card p-4 mb-4">
-        <h4 class="mb-3">Actions</h4>
-
-        <div class="row g-3">
-
-            <div class="col-md-4">
-                <input class="form-control"
-                id="foundId"
-                placeholder="Item ID">
-                <button class="btn btn-warning w-100 mt-2"
-                onclick="reportFound()">
-                    Mark Found
-                </button>
-            </div>
-
-            <div class="col-md-4">
-                <input class="form-control"
-                id="approveId"
-                placeholder="Item ID">
-                <button class="btn btn-info w-100 mt-2"
-                onclick="approveReward()">
-                    Approve Reward
-                </button>
-            </div>
-
-            <div class="col-md-4">
-                <input class="form-control mb-2"
-                id="claimId"
-                placeholder="Item ID">
-
-                <input class="form-control"
-                id="enteredHash"
-                placeholder="Proof">
-
-                <button class="btn btn-dark w-100 mt-2"
-                onclick="claimReward()">
-                    Claim Reward
-                </button>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ITEMS TABLE -->
-    <div class="card p-4">
-
-        <div class="d-flex justify-content-between mb-3">
-            <h4>All Items</h4>
-
-            <button class="btn btn-secondary"
-            onclick="loadItems()">
-                Refresh
-            </button>
-        </div>
-
-        <div class="table-responsive">
-
-            <table class="table table-bordered">
-
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Category</th>
-                        <th>Location</th>
-                        <th>Reward</th>
-                        <th>Owner</th>
-                        <th>Finder</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-
-                <tbody id="itemsBody"></tbody>
-
-            </table>
-
         </div>
 
     </div>
 
-</div>
+    <!-- APPROVE / CLAIM -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h5>Approve Reward</h5>
+                <input id="approveId" class="form-control mb-2" placeholder="Item ID">
+                <button class="btn btn-info" onclick="approveReward()">Approve</button>
+            </div>
+        </div>
 
-<script src="app.js"></script>
+        <div class="col-md-6">
+            <div class="card p-3 mb-3">
+                <h5>Claim Reward</h5>
+                <input id="claimId" class="form-control mb-2" placeholder="Item ID">
+                <button class="btn btn-warning" onclick="claimReward()">Claim</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card p-3 mb-3">
+        <h5>Items Dashboard</h5>
+
+        <table class="table table-bordered mt-2">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Details</th>
+                    <th>Reward</th>
+                    <th>Owner</th>
+                    <th>Owner Email</th>
+                    <th>Finder</th>
+                    <th>Finder Email</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+        </table>
+    </div>
+
+    <!-- CREATE FORM -->
+    <div class="card p-3 mb-3">
+        <h5>Create Verification Form (Finder)</h5>
+
+        <input id="modalItemId" class="form-control mb-2" placeholder="Item ID">
+
+        <input id="q1" class="form-control mb-2" placeholder="Question 1">
+        <input id="q2" class="form-control mb-2" placeholder="Question 2">
+        <input id="q3" class="form-control mb-2" placeholder="Question 3">
+
+        <button class="btn btn-secondary" onclick="saveForm()">Save Questions</button>
+    </div>
+
+    <!-- OWNER ANSWERS -->
+    <div id="ownerFormsSection" style="display:none;">
+        <div class="card p-3 mb-3">
+            <h5>Answer Questions (Owner)</h5>
+            <div id="ownerFormsContainer"></div>
+        </div>
+    </div>
+
+    <!-- FINDER VERIFY -->
+    <div id="finderResponsesSection" style="display:none;">
+        <div class="card p-3 mb-3">
+            <h5>Verify Owner (Finder)</h5>
+            <div id="finderResponsesContainer"></div>
+        </div>
+    </div>
+
+    <!-- EXPORT / IMPORT -->
+    <div class="card p-3 mb-3">
+        <h5>Transfer Data (Optional)</h5>
+
+        <textarea id="transferBox" class="form-control mb-2" placeholder="Encoded Data"></textarea>
+
+        <button class="btn btn-outline-primary me-2" onclick="exportFormData()">Export</button>
+        <button class="btn btn-outline-success me-2" onclick="importFormData()">Import</button>
+        <button class="btn btn-outline-danger" onclick="sendViaEmail()">Send via Gmail</button>
+    </div>
+
+    <!-- SCRIPT -->
+    <script src="app.js"></script>
 
 </body>
 </html>
